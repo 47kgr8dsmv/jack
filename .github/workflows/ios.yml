@@ -36,3 +36,30 @@ jobs:
             -destination 'generic/platform=iOS Simulator' \
             CODE_SIGNING_ALLOWED=NO \
             build
+      - name: Build unsigned iPhone app
+        run: |
+          xcodebuild \
+            -project MORNING.xcodeproj \
+            -scheme MORNING \
+            -configuration Debug \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath .build-device \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+      - name: Package unsigned device IPA for local sideload signing
+        run: |
+          set -e
+          APP=".build-device/Build/Products/Debug-iphoneos/MORNING.app"
+          test -d "$APP"
+          mkdir -p ipa/Payload
+          ditto "$APP" "ipa/Payload/MORNING.app"
+          cd ipa
+          /usr/bin/zip -qry ../MORNING-unsigned.ipa Payload
+          test -s ../MORNING-unsigned.ipa
+      - name: Upload unsigned device IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: MORNING-unsigned-iphone
+          path: MORNING-iOS/MORNING-unsigned.ipa
+          retention-days: 7
