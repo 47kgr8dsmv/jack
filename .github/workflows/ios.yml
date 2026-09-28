@@ -1,0 +1,50 @@
+
+name: MORNING iOS Build
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+
+    steps:
+      - name: Download source code
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: |
+          sudo xcode-select -s /Applications/Xcode_16.4.app/Contents/Developer
+          xcodebuild -version
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        working-directory: ./早晨-iOS
+        run: xcodegen generate --spec project.yml
+
+      - name: Build iOS simulator app
+        working-directory: ./早晨-iOS
+        run: |
+          PROJECT=$(find . -maxdepth 1 -name '*.xcodeproj' -print -quit)
+          if [ -z "$PROJECT" ]; then
+            echo "Xcode project not found"
+            exit 1
+          fi
+
+          xcodebuild -list -project "$PROJECT"
+
+          SCHEME=$(xcodebuild -list -json -project "$PROJECT" \
+            | python3 -c 'import sys,json; print(json.load(sys.stdin)["project"]["schemes"][0])')
+
+          xcodebuild \
+            -project "$PROJECT" \
+            -scheme "$SCHEME" \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO \
+            build
